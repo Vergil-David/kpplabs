@@ -4,7 +4,6 @@ class Appointment {
   int _visitorCount;
   String _comment;
 
-  // Конструктор
   Appointment({
     required String day,
     required int visitorCount,
@@ -13,17 +12,14 @@ class Appointment {
         _visitorCount = visitorCount,
         _comment = comment;
 
-  // Геттери
   String get day => _day;
   int get visitorCount => _visitorCount;
   String get comment => _comment;
 
-  // Сеттери
   set day(String value) => _day = value;
   set visitorCount(int value) => _visitorCount = value;
   set comment(String value) => _comment = value;
 
-  // Метод виведення інформації
   void displayInfo() {
     print('День: $_day, Відвідувачів: $_visitorCount, Коментар: $_comment');
   }
@@ -31,155 +27,92 @@ class Appointment {
 
 // Generic клас для колекції
 class Collection<T> {
-  Set<T> _items;
+  final Set<T> _items = {};
 
-  Collection() : _items = {};
-
-  // Додати елемент
-  void add(T item) {
-    _items.add(item);
-  }
-
-  // Отримати всі елементи
+  void add(T item) => _items.add(item);
   Set<T> getAll() => _items;
-
-  // Кількість елементів
   int get count => _items.length;
-
-  // Перевірка чи порожня колекція
   bool get isEmpty => _items.isEmpty;
 
-  // Generic метод 1: Знайти елемент за умовою
-  T? findWhere(bool Function(T) condition) {
-    for (var item in _items) {
-      if (condition(item)) {
-        return item;
-      }
-    }
-    return null;
-  }
+  // Generic метод 1: Знайти за умовою
+  T? findWhere(bool Function(T) condition) => 
+      _items.firstWhere(condition, orElse: () => null as T);
 
-  // Generic метод 2: Фільтрація елементів
-  List<T> filterBy(bool Function(T) condition) {
-    List<T> result = [];
-    for (var item in _items) {
-      if (condition(item)) {
-        result.add(item);
-      }
-    }
-    return result;
-  }
+  // Generic метод 2: Фільтрація
+  List<T> filterBy(bool Function(T) condition) => 
+      _items.where(condition).toList();
 
-  // Generic метод 3: Отримати значення за допомогою селектора
-  R? getValueBy<R>(R Function(T) selector, bool Function(R, R) comparator) {
+  // Generic метод 3: Отримати мін/макс значення
+  R? getExtreme<R extends Comparable>(R Function(T) selector, {bool max = false}) {
     if (_items.isEmpty) return null;
-
-    R? result;
-    for (var item in _items) {
-      R value = selector(item);
-      if (result == null || comparator(value, result)) {
-        result = value;
-      }
-    }
-    return result;
+    return _items.map(selector).reduce((a, b) => 
+        max ? (a.compareTo(b) > 0 ? a : b) : (a.compareTo(b) < 0 ? a : b));
   }
 
-  // Generic метод 4: Обчислити середнє значення
+  // Generic метод 4: Обчислити середнє
   double calculateAverage(num Function(T) selector) {
     if (_items.isEmpty) return 0;
-
-    num total = 0;
-    for (var item in _items) {
-      total += selector(item);
-    }
-    return total / _items.length;
+    return _items.map(selector).reduce((a, b) => a + b) / _items.length;
   }
 }
 
-// Клас Лікар з використанням generic класу
+// Клас Лікар
 class Doctor {
   String _surname;
   int _experience;
-  Collection<Appointment> _appointments;
+  final Collection<Appointment> _appointments = Collection<Appointment>();
 
-  // Конструктор
-  Doctor({
-    required String surname,
-    required int experience,
-  })  : _surname = surname,
-        _experience = experience,
-        _appointments = Collection<Appointment>();
+  Doctor({required String surname, required int experience})
+      : _surname = surname,
+        _experience = experience;
 
-  // Геттери
   String get surname => _surname;
   int get experience => _experience;
   Collection<Appointment> get appointments => _appointments;
 
-  // Сеттери
   set surname(String value) => _surname = value;
   set experience(int value) => _experience = value;
 
-  // Додати прийом
-  void addAppointment(Appointment appointment) {
-    _appointments.add(appointment);
-  }
+  void addAppointment(Appointment appointment) => _appointments.add(appointment);
 
-  // Метод: середня кількість відвідувачів (використовує generic метод)
-  double getAverageVisitors() {
-    return _appointments.calculateAverage((appointment) => appointment.visitorCount);
-  }
+  // Використання generic методів
+  double getAverageVisitors() => 
+      _appointments.calculateAverage((a) => a.visitorCount);
 
-  // Метод: прийом з мінімальною кількістю відвідувачів (використовує generic метод)
   Appointment? getMinVisitorsAppointment() {
-    return _appointments.findWhere((appointment) {
-      int minCount = _appointments.getValueBy<int>(
-            (a) => a.visitorCount,
-            (value, result) => value < result,
-          ) ??
-          0;
-      return appointment.visitorCount == minCount;
-    });
+    int? minCount = _appointments.getExtreme<int>((a) => a.visitorCount);
+    return minCount != null 
+        ? _appointments.findWhere((a) => a.visitorCount == minCount) 
+        : null;
   }
 
-  // Метод: прийом з найдовшим коментарем (використовує generic метод)
   Appointment? getLongestCommentAppointment() {
-    return _appointments.findWhere((appointment) {
-      int maxLength = _appointments.getValueBy<int>(
-            (a) => a.comment.length,
-            (value, result) => value > result,
-          ) ??
-          0;
-      return appointment.comment.length == maxLength;
-    });
+    int? maxLength = _appointments.getExtreme<int>((a) => a.comment.length, max: true);
+    return maxLength != null 
+        ? _appointments.findWhere((a) => a.comment.length == maxLength) 
+        : null;
   }
 
-  // Generic метод: Фільтрувати прийоми за умовою
-  List<Appointment> filterAppointments(bool Function(Appointment) condition) {
-    return _appointments.filterBy(condition);
-  }
+  List<Appointment> filterAppointments(bool Function(Appointment) condition) =>
+      _appointments.filterBy(condition);
 
-  // Метод виведення всіх прийомів
   void displayAllAppointments() {
     print('\nЛікар: $_surname, Стаж: $_experience років');
     print('Прийоми:');
-    for (var appointment in _appointments.getAll()) {
-      appointment.displayInfo();
-    }
+    _appointments.getAll().forEach((a) => a.displayInfo());
   }
 
-  // Метод виведення результатів основного завдання
   void displayStatistics() {
     print('\n--- Результати аналізу ---');
-
     print('Середня кількість відвідувачів: ${getAverageVisitors().toStringAsFixed(2)}');
 
-    Appointment? minAppointment = getMinVisitorsAppointment();
+    final minAppointment = getMinVisitorsAppointment();
     if (minAppointment != null) {
       print('\nПрийом з мінімальною кількістю відвідувачів:');
       minAppointment.displayInfo();
     }
 
-    Appointment? longestAppointment = getLongestCommentAppointment();
+    final longestAppointment = getLongestCommentAppointment();
     if (longestAppointment != null) {
       print('\nПрийом з найдовшим коментарем:');
       longestAppointment.displayInfo();
@@ -188,56 +121,22 @@ class Doctor {
 }
 
 void main() {
-  // Створення лікаря
-  Doctor doctor = Doctor(
-    surname: 'Петренко',
-    experience: 15,
-  );
+  final doctor = Doctor(surname: 'Петренко', experience: 15);
 
   // Додавання прийомів
-  doctor.addAppointment(Appointment(
-    day: 'Понеділок',
-    visitorCount: 25,
-    comment: 'Плановий прийом',
-  ));
+  [
+    Appointment(day: 'Понеділок', visitorCount: 25, comment: 'Плановий прийом'),
+    Appointment(day: 'Вівторок', visitorCount: 18, comment: 'Консультації пацієнтів'),
+    Appointment(day: 'Середа', visitorCount: 30, comment: 'Багато пацієнтів, потрібна додаткова допомога'),
+    Appointment(day: 'Четвер', visitorCount: 15, comment: 'Спокійний день'),
+    Appointment(day: 'П\'ятниця', visitorCount: 22, comment: 'Профілактичні огляди та повторні консультації пацієнтів'),
+  ].forEach(doctor.addAppointment);
 
-  doctor.addAppointment(Appointment(
-    day: 'Вівторок',
-    visitorCount: 18,
-    comment: 'Консультації пацієнтів',
-  ));
-
-  doctor.addAppointment(Appointment(
-    day: 'Середа',
-    visitorCount: 30,
-    comment: 'Багато пацієнтів, потрібна додаткова допомога',
-  ));
-
-  doctor.addAppointment(Appointment(
-    day: 'Четвер',
-    visitorCount: 15,
-    comment: 'Спокійний день',
-  ));
-
-  doctor.addAppointment(Appointment(
-    day: 'П\'ятниця',
-    visitorCount: 22,
-    comment: 'Профілактичні огляди та повторні консультації пацієнтів',
-  ));
-
-  // Виведення всіх прийомів
   doctor.displayAllAppointments();
-
-  // Виведення статистики
   doctor.displayStatistics();
 
-  // Демонстрація використання generic методів
   print('\n--- Додаткова фільтрація ---');
-
-  // Фільтр: прийоми з більше ніж 20 відвідувачів
-  List<Appointment> busyDays = doctor.filterAppointments((a) => a.visitorCount > 20);
   print('\nПрийоми з більше ніж 20 відвідувачів:');
-  for (var appointment in busyDays) {
-    appointment.displayInfo();
-  }
+  doctor.filterAppointments((a) => a.visitorCount > 20)
+      .forEach((a) => a.displayInfo());
 }
